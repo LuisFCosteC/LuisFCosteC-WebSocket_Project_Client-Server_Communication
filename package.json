@@ -1,0 +1,20 @@
+{
+  "name": "websocket-project-client-server-communication",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "run_server": "node --watch ./server/index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "@libsql/client": "^0.14.0",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.1",
+    "morgan": "^1.10.0",
+    "socket.io": "^4.8.0"
+  }
+}
