@@ -11,8 +11,15 @@ const app = express()
 const server = createServer(app)
 const io = new Server(server)
 
-io.on('connection', () => {
+io.on('connection', (socket) => {
+    console.log('');
     console.log('A user has connected!')
+
+    socket.on('disconnect', () => {
+        console.log('')
+        console.log('An user has disconnected')
+        console.log('');
+    })
 })
 
 app.use(logger('dev'))
@@ -22,5 +29,6 @@ app.get('/', (req, res) => {
 })
 
 server.listen(port, () => {
+    console.log('');
     console.log(`Server running on port ${port}`)
 })
