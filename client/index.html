@@ -12,6 +12,17 @@
 
         const form = document.getElementById('form')
         const input = document.getElementById('input')
+        const messages = document.getElementById('messages')
+
+        socket.on('chat message', (msg, serverOffset, username) => {
+            const item = `<li>${msg}</li>`
+            messages.insertAdjacentHTML('beforeend', item)
+
+                // Autoscroll si el usuario está cerca del final
+                if (messages.scrollHeight - messages.scrollTop - messages.clientHeight < 100) {
+                messages.scrollTop = messages.scrollHeight;
+            }
+        })
 
         form.addEventListener('submit', (e) => {
             e.preventDefault()
