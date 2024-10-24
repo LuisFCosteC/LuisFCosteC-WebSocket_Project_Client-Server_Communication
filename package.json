@@ -2,6 +2,7 @@
   "name": "websocket-project-client-server-communication",
   "version": "1.0.0",
   "main": "index.js",
+  "type": "module",
   "scripts": {
     "run_server": "node --watch ./server/index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
