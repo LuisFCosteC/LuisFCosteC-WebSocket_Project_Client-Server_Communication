@@ -38,40 +38,122 @@ await db.execute(`
         content TEXT,  -- Columna que almacena el contenido del mensaje
         user TEXT,  -- Columna que almacena el nombre de usuario que envió el mensaje
         ip INTEGER, -- Columna que almacena la ip del usuario
-        mac TEXT -- Columna que almacena la mac
+        mac TEXT, -- Columna que almacena la mac
+        gateway TEXT -- Columna que almacena el gateway
     )
 `)
 
-// Función para obtener la dirección MAC del cliente
+// Función para obtener la dirección MAC del cliente o del servidor según la IP proporcionada
 const getMacAddress = (ipv4) => {
+    // Retorna una nueva promesa que resolverá con la dirección MAC o rechazará si hay un error
     return new Promise((resolve, reject) => {
-        // Si la IP corresponde a la del servidor, devolvemos la MAC asignada
+        // Verificamos si la IP corresponde a la del servidor
         if (ipv4 === '192.168.18.185') {
+            // Asignamos manualmente la dirección MAC del servidor si la IP coincide
             const macAddress = '80-C5-F2-0B-1A-5D';
+            // Mostramos en consola la dirección MAC asociada a la IP del servidor
             console.log(`MAC Address for server IP ${ipv4} = ${macAddress}`);
+            // Resolvemos la promesa con la dirección MAC del servidor
             resolve(macAddress);
+            // Finalizamos la ejecución de la función, sin ejecutar el resto del código
             return;
         }
+        
+        // Ejecutamos el comando 'arp -a' para obtener la dirección MAC de la IP proporcionada
         exec(`arp -a ${ipv4}`, (error, stdout, stderr) => {
+            // Si ocurre un error durante la ejecución del comando
             if (error) {
+                // Mostramos el mensaje de error en la consola
                 console.error(`Error: ${error.message}`);
+                // Rechazamos la promesa con el error y terminamos la ejecución
                 reject(error);
                 return;
             }
+            
+            // Si hay un mensaje de error en la salida estándar de error
             if (stderr) {
+                // Mostramos el mensaje de error en la consola
                 console.error(`Stderr: ${stderr}`);
+                // Rechazamos la promesa con el mensaje de error y terminamos la ejecución
                 reject(stderr);
                 return;
             }
 
+            // Utilizamos una expresión regular para buscar el patrón de una dirección MAC en la salida del comando
             const match = stdout.match(/([0-9a-f]{2}[:-]){5}([0-9a-f]{2})/i);
+            // Si encontramos una coincidencia, guardamos la dirección MAC; si no, asignamos 'MAC Address not found'
             const macAddress = match ? match[0] : 'MAC Address not found';
+            // Mostramos en consola la dirección MAC obtenida para la IP proporcionada
             console.log(`MAC Address for -> ${ipv4} = ${macAddress}`);
+            // Resolvemos la promesa con la dirección MAC obtenida
             resolve(macAddress);
         });
     });
 };
 
+// Función que obtiene la puerta de enlace (gateway) a partir de una dirección IP IPv4
+const getGatewayByIP = (ipv4) => {
+    // Retorna una nueva promesa que se resolverá con la puerta de enlace o se rechazará en caso de error
+    return new Promise((resolve, reject) => {
+        // Determina el comando a ejecutar dependiendo del sistema operativo
+        // Si es Windows, se usa 'ipconfig', de lo contrario se usa 'netstat -rn'
+        const command = process.platform === 'win32' ? 'ipconfig' : 'netstat -rn';
+
+        // Ejecuta el comando seleccionado
+        exec(command, (error, stdout, stderr) => {
+            // Si ocurre un error durante la ejecución del comando
+            if (error) {
+                // Muestra el mensaje de error en la consola
+                console.error(`Error ejecutando el comando: ${error.message}`);
+                // Rechaza la promesa con el error
+                reject(error);
+                return; // Sale de la función
+            }
+            // Si hay algún mensaje de error en la salida estándar de error
+            if (stderr) {
+                // Muestra el mensaje de error en la consola
+                console.error(`Stderr: ${stderr}`);
+                // Rechaza la promesa con el mensaje de error
+                reject(stderr);
+                return; // Sale de la función
+            }
+
+            // Divide la salida del comando en líneas
+            const lines = stdout.split('\n');
+
+            // Inicializa la variable de gateway con un valor por defecto
+            let gateway = 'Gateway not found';
+
+            // Recorre cada línea en la salida
+            for (let i = 0; i < lines.length; i++) {
+                // Elimina espacios en blanco al inicio y al final de la línea
+                const line = lines[i].trim();
+                // Comprueba si la línea contiene la dirección IPv4 proporcionada
+                if (line.includes(ipv4)) {
+                    // Si se encuentra la IP, busca la línea siguiente que contiene la puerta de enlace
+                    for (let j = i; j < lines.length; j++) {
+                        // Comprueba si la línea contiene la frase 'Puerta de enlace predeterminada'
+                        if (lines[j].includes('Puerta de enlace predeterminada')) {
+                            // Captura el valor de la puerta de enlace utilizando una expresión regular
+                            const match = lines[j].match(/:\s*([0-9.]+)/);
+                            // Si se encuentra una coincidencia, se asigna el valor de la puerta de enlace
+                            if (match) {
+                                gateway = match[1]; // Obtener el valor de la puerta de enlace
+                            }
+                            break; // Sale del bucle una vez que se ha encontrado la puerta de enlace
+                        }
+                    }
+                    break; // Sale del bucle principal si se encontró la IP
+                }
+            }
+
+            // Muestra en consola la puerta de enlace encontrada para la IP dada
+            console.log(`Gateway para la IP ${ipv4}: ${gateway}`);
+            // Resuelve la promesa con el valor de la puerta de enlace
+            resolve(gateway);
+        });
+    });
+};
 
 // Configuramos el evento 'connection' para manejar cuando un cliente se conecta al servidor WebSocket
 io.on('connection', async (socket) => {
@@ -91,6 +173,9 @@ io.on('connection', async (socket) => {
     // Obtener MAC
     const mac = await getMacAddress(ipv4);
 
+    // Aquí llamamos a getGatewayByIP
+    const gateway = await getGatewayByIP(ipv4);
+
     // Configuramos el evento 'disconnect' para manejar cuando un cliente se desconecta
     socket.on('disconnect', () => {
         // Mostramos un mensaje en la consola cuando un usuario se desconecta
@@ -105,15 +190,15 @@ io.on('connection', async (socket) => {
         // Obtenemos el nombre de usuario desde el socket o usamos 'anonymous' si no está definido
         const username = socket.handshake.auth.username ?? 'anonymous'
         // Mostramos el mensaje y el usuario en la consola
-        console.log({ username, msg, ipv4, mac })
+        console.log({ username, msg, ipv4, mac, gateway })
 
         // Intentamos insertar el mensaje en la base de datos
         try {
             result = await db.execute({
                 // Consulta SQL para insertar el contenido del mensaje, el usuario en la tabla 'messages' y la ip
-                sql: `INSERT INTO messages (content, user, ip, mac) VALUES (:msg, :username, :ipv4, :mac)`,
+                sql: `INSERT INTO messages (content, user, ip, mac, gateway) VALUES (:msg, :username, :ipv4, :mac, :gateway)`,
                 // Pasamos los argumentos necesarios para la consulta
-                args: { msg, username, ipv4, mac }
+                args: { msg, username, ipv4, mac, gateway }
             })
         } catch (e) {
             // En caso de error, lo mostramos en la consola y terminamos la ejecución
@@ -121,7 +206,7 @@ io.on('connection', async (socket) => {
             return
         }
         // Emitimos el mensaje de chat a todos los clientes conectados, incluyendo el ID del mensaje insertado
-        io.emit('chat message', msg, result.lastInsertRowid.toString(), username, ipv4, mac)
+        io.emit('chat message', msg, result.lastInsertRowid.toString(), username, ipv4, mac, gateway)
     })
 
     // Si el socket no está recuperado (el usuario es nuevo o no ha reconectado), recuperamos los mensajes anteriores
@@ -130,7 +215,7 @@ io.on('connection', async (socket) => {
         try {
             const results = await db.execute({
                 // Consulta SQL para obtener mensajes
-                sql: 'SELECT id, content, user, ip, mac FROM messages WHERE id > ?',
+                sql: 'SELECT id, content, user, ip, mac, gateway FROM messages WHERE id > ?',
                 // Parámetro: el último ID conocido por el cliente (serverOffset)
                 args: [socket.handshake.auth.serverOffset ?? 0]
             })
@@ -138,7 +223,7 @@ io.on('connection', async (socket) => {
         // Enviamos cada mensaje recuperado al cliente que se acaba de conectar
         results.rows.forEach(row => {
             // Emitimos un evento 'chat message' al cliente con el contenido, ID y usuario del mensaje
-            socket.emit('chat message', row.content, row.id.toString(), row.user, row.ip, row.mac)
+            socket.emit('chat message', row.content, row.id.toString(), row.user, row.ip, row.mac, row.gateway)
         })
 
         } catch (e) {
