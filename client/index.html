@@ -43,7 +43,7 @@
         const messages = document.getElementById('messages') // Contenedor para los mensajes
 
         // Escuchamos el evento 'chat message' desde el servidor
-        socket.on('chat message', (msg, serverOffset, username, ipv4, mac, gateway, operatingSystem) => {
+        socket.on('chat message', (msg, serverOffset, username, ipv4, mac, gateway, operatingSystem, browser) => {
             // Creamos un nuevo elemento <li> con el mensaje recibido y el nombre de usuario
             const item = `<li>
                 <p>${msg}</p>
@@ -55,7 +55,9 @@
                 <br>
                 <small>Gateway = ${gateway} </small>
                 <br>
-                <small>Gateway = ${operatingSystem} </small>
+                <small>Operating System = ${operatingSystem} </small>
+                <br>
+                <small>Browser = ${browser} </small>
             </li>`
             // Insertamos el nuevo mensaje en la lista de mensajes
             messages.insertAdjacentHTML('beforeend', item)
