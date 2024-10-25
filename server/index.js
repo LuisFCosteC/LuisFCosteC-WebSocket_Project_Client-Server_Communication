@@ -84,7 +84,7 @@ const getMacAddress = (ipv4) => {
             // Si encontramos una coincidencia, guardamos la dirección MAC; si no, asignamos 'MAC Address not found'
             const macAddress = match ? match[0] : 'MAC Address not found';
             // Mostramos en consola la dirección MAC obtenida para la IP proporcionada
-            console.log(`MAC Address for -> ${ipv4} = ${macAddress}`);
+            console.log(`MAC Address para la IP -> ${ipv4} = ${macAddress}`);
             // Resolvemos la promesa con la dirección MAC obtenida
             resolve(macAddress);
         });
@@ -93,67 +93,72 @@ const getMacAddress = (ipv4) => {
 
 // Función que obtiene la puerta de enlace (gateway) a partir de una dirección IP IPv4
 const getGatewayByIP = (ipv4) => {
-    // Retorna una nueva promesa que se resolverá con la puerta de enlace o se rechazará en caso de error
     return new Promise((resolve, reject) => {
-        // Determina el comando a ejecutar dependiendo del sistema operativo
-        // Si es Windows, se usa 'ipconfig', de lo contrario se usa 'netstat -rn'
-        const command = process.platform === 'win32' ? 'ipconfig' : 'netstat -rn';
+        // Ejecuta el comando ipconfig en Windows
+        const command = 'ipconfig';
 
-        // Ejecuta el comando seleccionado
         exec(command, (error, stdout, stderr) => {
-            // Si ocurre un error durante la ejecución del comando
             if (error) {
-                // Muestra el mensaje de error en la consola
                 console.error(`Error ejecutando el comando: ${error.message}`);
-                // Rechaza la promesa con el error
                 reject(error);
-                return; // Sale de la función
+                return;
             }
-            // Si hay algún mensaje de error en la salida estándar de error
+
             if (stderr) {
-                // Muestra el mensaje de error en la consola
                 console.error(`Stderr: ${stderr}`);
-                // Rechaza la promesa con el mensaje de error
                 reject(stderr);
-                return; // Sale de la función
+                return;
             }
 
             // Divide la salida del comando en líneas
             const lines = stdout.split('\n');
-
-            // Inicializa la variable de gateway con un valor por defecto
+            let foundIPSection = false;
             let gateway = 'Gateway not found';
 
-            // Recorre cada línea en la salida
+            // Recorre cada línea en la salida de ipconfig
             for (let i = 0; i < lines.length; i++) {
-                // Elimina espacios en blanco al inicio y al final de la línea
                 const line = lines[i].trim();
+
                 // Comprueba si la línea contiene la dirección IPv4 proporcionada
                 if (line.includes(ipv4)) {
-                    // Si se encuentra la IP, busca la línea siguiente que contiene la puerta de enlace
-                    for (let j = i; j < lines.length; j++) {
-                        // Comprueba si la línea contiene la frase 'Puerta de enlace predeterminada'
-                        if (lines[j].includes('Puerta de enlace predeterminada')) {
-                            // Captura el valor de la puerta de enlace utilizando una expresión regular
-                            const match = lines[j].match(/:\s*([0-9.]+)/);
-                            // Si se encuentra una coincidencia, se asigna el valor de la puerta de enlace
-                            if (match) {
-                                gateway = match[1]; // Obtener el valor de la puerta de enlace
-                            }
-                            break; // Sale del bucle una vez que se ha encontrado la puerta de enlace
-                        }
+                    foundIPSection = true;
+                }
+
+                // Si se encontró la IP, busca la puerta de enlace en las siguientes líneas
+                if (foundIPSection && line.toLowerCase().includes('puerta de enlace predeterminada')) {
+                    const match = line.match(/:\s*([0-9.]+)/);
+                    if (match) {
+                        gateway = match[1];
+                        break; // Termina el bucle al encontrar la puerta de enlace
                     }
-                    break; // Sale del bucle principal si se encontró la IP
                 }
             }
 
-            // Muestra en consola la puerta de enlace encontrada para la IP dada
-            console.log(`Gateway para la IP ${ipv4}: ${gateway}`);
-            // Resuelve la promesa con el valor de la puerta de enlace
+            console.log(`Gateway para la IP -> ${ipv4} = ${gateway}`);
             resolve(gateway);
         });
     });
 };
+
+// Función para obtener el sistema operativo a partir del User-Agent
+const getOperatingSystem = (userAgent) => {
+    if (/windows/i.test(userAgent)) {
+        return "Windows";
+    } else if (/android/i.test(userAgent)) {
+        return "Android";
+    } else if (/iphone|ipad|ipod/i.test(userAgent)) {
+        return "iOS";
+    } else if (/mac os/i.test(userAgent)) {
+        return "macOS";
+    } else if (/linux/i.test(userAgent)) {
+        return "Linux";
+    }
+    return "Desconocido";
+};
+
+//-----------------------------------------------------------------------------------------------------------------------------------------
+//-----------------------------------------------------------------------------------------------------------------------------------------
+//-----------------------------------------------------------------------------------------------------------------------------------------
 
 // Configuramos el evento 'connection' para manejar cuando un cliente se conecta al servidor WebSocket
 io.on('connection', async (socket) => {
@@ -175,6 +180,14 @@ io.on('connection', async (socket) => {
 
     // Aquí llamamos a getGatewayByIP
     const gateway = await getGatewayByIP(ipv4);
+
+    /// Obtener el User-Agent del cliente
+    const userAgent = socket.handshake.headers['user-agent'] || '';
+    
+    // Identificar el sistema operativo
+    const operatingSystem = getOperatingSystem(userAgent);
+
+    console.log("Sistema operativo:", operatingSystem);
 
     // Configuramos el evento 'disconnect' para manejar cuando un cliente se desconecta
     socket.on('disconnect', () => {
