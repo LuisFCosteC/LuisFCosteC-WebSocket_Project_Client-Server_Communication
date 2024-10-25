@@ -34,7 +34,8 @@ await db.execute(`
     CREATE TABLE IF NOT EXISTS messages (
         id INTEGER PRIMARY KEY AUTOINCREMENT,  -- ID autoincremental como clave primaria
         content TEXT,  -- Columna que almacena el contenido del mensaje
-        user TEXT  -- Columna que almacena el nombre de usuario que envió el mensaje
+        user TEXT,  -- Columna que almacena el nombre de usuario que envió el mensaje
+        ip INTEGER -- Columna que almacena la ip del usuario
     )
 `)
 
@@ -44,11 +45,20 @@ io.on('connection', async (socket) => {
     console.log('');
     console.log('A user has connected!')
 
+    // Obtener la dirección IP local del cliente
+    const clientIp = socket.handshake.address;
+
+    // Extrae la ip de IPv6 a IPv4
+    const ipv4 = clientIp.startsWith('::ffff:') ? clientIp.substring(7) : clientIp;
+
+    // Mostramos un mensaje en la consola con la ip del usuario
+    console.log('IP: ', ipv4)
+
     // Configuramos el evento 'disconnect' para manejar cuando un cliente se desconecta
     socket.on('disconnect', () => {
         // Mostramos un mensaje en la consola cuando un usuario se desconecta
         console.log('');
-        console.log('An user has disconnected')
+        console.log('An user has disconnected', 'IP: ', ipv4)
         console.log('');
     })
 
@@ -58,15 +68,15 @@ io.on('connection', async (socket) => {
         // Obtenemos el nombre de usuario desde el socket o usamos 'anonymous' si no está definido
         const username = socket.handshake.auth.username ?? 'anonymous'
         // Mostramos el mensaje y el usuario en la consola
-        console.log({ username, msg })
+        console.log({ username, msg, ipv4 })
 
         // Intentamos insertar el mensaje en la base de datos
         try {
             result = await db.execute({
-                // Consulta SQL para insertar el contenido del mensaje y el usuario en la tabla 'messages'
-                sql: `INSERT INTO messages (content, user) VALUES (:msg, :username)`,
+                // Consulta SQL para insertar el contenido del mensaje, el usuario en la tabla 'messages' y la ip
+                sql: `INSERT INTO messages (content, user, ip) VALUES (:msg, :username, :ipv4)`,
                 // Pasamos los argumentos necesarios para la consulta
-                args: { msg, username }
+                args: { msg, username, ipv4 }
             })
         } catch (e) {
             // En caso de error, lo mostramos en la consola y terminamos la ejecución
@@ -74,7 +84,7 @@ io.on('connection', async (socket) => {
             return
         }
         // Emitimos el mensaje de chat a todos los clientes conectados, incluyendo el ID del mensaje insertado
-        io.emit('chat message', msg, result.lastInsertRowid.toString(), username)
+        io.emit('chat message', msg, result.lastInsertRowid.toString(), username, ipv4)
     })
 
     // Si el socket no está recuperado (el usuario es nuevo o no ha reconectado), recuperamos los mensajes anteriores
@@ -83,7 +93,7 @@ io.on('connection', async (socket) => {
         try {
             const results = await db.execute({
                 // Consulta SQL para obtener mensajes
-                sql: 'SELECT id, content, user FROM messages WHERE id > ?',
+                sql: 'SELECT id, content, user, ip FROM messages WHERE id > ?',
                 // Parámetro: el último ID conocido por el cliente (serverOffset)
                 args: [socket.handshake.auth.serverOffset ?? 0]
             })
@@ -91,7 +101,7 @@ io.on('connection', async (socket) => {
         // Enviamos cada mensaje recuperado al cliente que se acaba de conectar
         results.rows.forEach(row => {
             // Emitimos un evento 'chat message' al cliente con el contenido, ID y usuario del mensaje
-            socket.emit('chat message', row.content, row.id.toString(), row.user)
+            socket.emit('chat message', row.content, row.id.toString(), row.user, row.ip)
         })
 
         } catch (e) {

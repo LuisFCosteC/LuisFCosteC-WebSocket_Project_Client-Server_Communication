@@ -30,7 +30,7 @@
         }
 
         // Inicializamos la conexión con el servidor de WebSockets
-        const socket = io({
+        const socket = io('http://192.168.18.185:3000', {
             auth: {
                 username: await getUsername(), // Pasamos el nombre de usuario como autenticación
                 serverOffset: 0 // Valor inicial para el desplazamiento del servidor
@@ -43,11 +43,13 @@
         const messages = document.getElementById('messages') // Contenedor para los mensajes
 
         // Escuchamos el evento 'chat message' desde el servidor
-        socket.on('chat message', (msg, serverOffset, username) => {
+        socket.on('chat message', (msg, serverOffset, username, ipv4) => {
             // Creamos un nuevo elemento <li> con el mensaje recibido y el nombre de usuario
             const item = `<li>
                 <p>${msg}</p>
-                <small>${username}</small>
+                <small>Usuario = ${username}</small>
+                <br>
+                <small>Ip = ${ipv4}</small>
             </li>`
             // Insertamos el nuevo mensaje en la lista de mensajes
             messages.insertAdjacentHTML('beforeend', item)
