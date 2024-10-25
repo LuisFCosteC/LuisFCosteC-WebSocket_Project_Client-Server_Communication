@@ -5,7 +5,7 @@ import dotenv from 'dotenv'  // Cargar variables de entorno desde un archivo .en
 import { createClient } from '@libsql/client';  // Crear cliente para interactuar con la base de datos
 import { Server } from "socket.io";  // Módulo para configurar y gestionar WebSockets
 import { createServer } from "node:http";  // Módulo nativo para crear un servidor HTTP
-import { exec } from 'child_process';
+import { exec } from 'child_process'; // Módulo para ejecutar comandos del sistema operativo desde el servidor, como obtener la IP y MAC
 import os from 'os'; // Importar el módulo 'os'
 
 // Cargamos las variables de entorno definidas en el archivo .env
@@ -95,87 +95,115 @@ const getMacAddress = (ipv4) => {
 
 // Función que obtiene la puerta de enlace (gateway) a partir de una dirección IP IPv4
 const getGatewayByIP = (ipv4) => {
+    // Devuelve una promesa que se resuelve cuando se encuentra la puerta de enlace
     return new Promise((resolve, reject) => {
-        // Ejecuta el comando ipconfig en Windows
+        // Define el comando a ejecutar para obtener la configuración de red
         const command = 'ipconfig';
 
+        // Ejecuta el comando ipconfig en el sistema operativo
         exec(command, (error, stdout, stderr) => {
+            // Si ocurre un error durante la ejecución del comando
             if (error) {
-                console.error(`Error ejecutando el comando: ${error.message}`);
-                reject(error);
-                return;
+                console.error(`Error ejecutando el comando: ${error.message}`); // Imprime el mensaje de error en la consola
+                reject(error); // Rechaza la promesa con el error
+                return; // Termina la función
             }
 
+            // Si hay un error en la salida estándar de error
             if (stderr) {
-                console.error(`Stderr: ${stderr}`);
-                reject(stderr);
-                return;
+                console.error(`Stderr: ${stderr}`); // Imprime el error en la consola
+                reject(stderr); // Rechaza la promesa con el stderr
+                return; // Termina la función
             }
 
             // Divide la salida del comando en líneas
-            const lines = stdout.split('\n');
-            let foundIPSection = false;
-            let gateway = 'Gateway not found';
+            const lines = stdout.split('\n'); 
+            let foundIPSection = false; // Variable para indicar si se ha encontrado la sección de la IP
+            let gateway = 'Gateway not found'; // Valor predeterminado si no se encuentra la puerta de enlace
 
             // Recorre cada línea en la salida de ipconfig
             for (let i = 0; i < lines.length; i++) {
-                const line = lines[i].trim();
+                const line = lines[i].trim(); // Elimina espacios en blanco al inicio y al final de la línea
 
                 // Comprueba si la línea contiene la dirección IPv4 proporcionada
                 if (line.includes(ipv4)) {
-                    foundIPSection = true;
+                    foundIPSection = true; // Marca que se encontró la sección de la IP
                 }
 
                 // Si se encontró la IP, busca la puerta de enlace en las siguientes líneas
                 if (foundIPSection && line.toLowerCase().includes('puerta de enlace predeterminada')) {
-                    const match = line.match(/:\s*([0-9.]+)/);
+                    const match = line.match(/:\s*([0-9.]+)/); // Busca la dirección IP de la puerta de enlace usando una expresión regular
                     if (match) {
-                        gateway = match[1];
+                        gateway = match[1]; // Extrae la puerta de enlace de la coincidencia
                         break; // Termina el bucle al encontrar la puerta de enlace
                     }
                 }
             }
 
+            // Imprime la puerta de enlace encontrada en la consola
             console.log(`Gateway para la IP -> ${ipv4} = ${gateway}`);
-            resolve(gateway);
+            resolve(gateway); // Resuelve la promesa con la puerta de enlace encontrada
         });
     });
 };
 
 // Función para obtener el sistema operativo a partir del User-Agent
 const getOperatingSystem = (userAgent) => {
+    // Comprueba si el User-Agent contiene la palabra 'windows' (sin importar mayúsculas o minúsculas)
     if (/windows/i.test(userAgent)) {
-        return "Windows";
-    } else if (/android/i.test(userAgent)) {
-        return "Android";
-    } else if (/iphone|ipad|ipod/i.test(userAgent)) {
-        return "iOS";
-    } else if (/mac os/i.test(userAgent)) {
-        return "macOS";
-    } else if (/linux/i.test(userAgent)) {
-        return "Linux";
+        return "Windows"; // Devuelve "Windows" si se encuentra
+    } 
+    // Comprueba si el User-Agent contiene la palabra 'android'
+    else if (/android/i.test(userAgent)) {
+        return "Android"; // Devuelve "Android" si se encuentra
+    } 
+    // Comprueba si el User-Agent contiene 'iphone', 'ipad' o 'ipod'
+    else if (/iphone|ipad|ipod/i.test(userAgent)) {
+        return "iOS"; // Devuelve "iOS" si se encuentra
+    } 
+    // Comprueba si el User-Agent contiene 'mac os'
+    else if (/mac os/i.test(userAgent)) {
+        return "macOS"; // Devuelve "macOS" si se encuentra
+    } 
+    // Comprueba si el User-Agent contiene la palabra 'linux'
+    else if (/linux/i.test(userAgent)) {
+        return "Linux"; // Devuelve "Linux" si se encuentra
     }
-    return "Desconocido";
+    // Si no se encuentra ninguno de los sistemas operativos anteriores
+    return "Desconocido"; // Devuelve "Desconocido" como valor predeterminado
 };
-
 
 // Función para detectar el navegador a partir del User-Agent
 const getBrowser = (userAgent) => {
+    // Comprueba si el User-Agent contiene 'chrome', 'chromium' o 'crios' (sin importar mayúsculas o minúsculas)
+    // Asegura que no sea Edge, ya que este navegador también contiene 'chrome' en su User-Agent
     if (/chrome|chromium|crios/i.test(userAgent) && !/edg/i.test(userAgent)) {
-        return "Chrome";
-    } else if (/firefox|fxios/i.test(userAgent)) {
-        return "Firefox";
-    } else if (/safari/i.test(userAgent) && !/chrome|chromium|crios/i.test(userAgent)) {
-        return "Safari";
-    } else if (/edg/i.test(userAgent)) {
-        return "Edge";
-    } else if (/opera|opr/i.test(userAgent)) {
-        return "Opera";
-    } else if (/msie|trident/i.test(userAgent)) {
-        return "Internet Explorer";
+        return "Chrome"; // Devuelve "Chrome" si se encuentra
+    } 
+    // Comprueba si el User-Agent contiene 'firefox' o 'fxios'
+    else if (/firefox|fxios/i.test(userAgent)) {
+        return "Firefox"; // Devuelve "Firefox" si se encuentra
+    } 
+    // Comprueba si el User-Agent contiene 'safari' y asegura que no sea Chrome, Chromium o CriOS
+    else if (/safari/i.test(userAgent) && !/chrome|chromium|crios/i.test(userAgent)) {
+        return "Safari"; // Devuelve "Safari" si se encuentra
+    } 
+    // Comprueba si el User-Agent contiene 'edg' (para Edge)
+    else if (/edg/i.test(userAgent)) {
+        return "Edge"; // Devuelve "Edge" si se encuentra
+    } 
+    // Comprueba si el User-Agent contiene 'opera' o 'opr'
+    else if (/opera|opr/i.test(userAgent)) {
+        return "Opera"; // Devuelve "Opera" si se encuentra
+    } 
+    // Comprueba si el User-Agent contiene 'msie' o 'trident' (para Internet Explorer)
+    else if (/msie|trident/i.test(userAgent)) {
+        return "Internet Explorer"; // Devuelve "Internet Explorer" si se encuentra
     }
-    return "Desconocido";
+    // Si no se encuentra ninguno de los navegadores anteriores
+    return "Desconocido"; // Devuelve "Desconocido" como valor predeterminado
 };
+
 
 //-----------------------------------------------------------------------------------------------------------------------------------------
 //-----------------------------------------------------------------------------------------------------------------------------------------
