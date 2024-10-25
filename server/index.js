@@ -299,6 +299,72 @@ io.on('connection', async (socket) => {
             console.error(e)
         }
     }
+
+    //-----------------------------------------------------------------------------------------------------------------------------------------
+    //-----------------------------------------------------------------------------------------------------------------------------------------
+        // Configuramos el evento 'calcular' para manejar las operaciones
+        io.on('connection', (socket) => {
+            console.log('Un usuario se ha conectado!');
+
+            // Manejamos el evento de cálculo para operaciones de dos números
+            socket.on('calcular', (data) => {
+                const { num1, num2, operation } = data; // Desestructuramos el número y la operación
+                let resultado;
+
+                switch (operation) {
+                    case 'suma':
+                        resultado = num1 + num2; // Realizamos la suma
+                        break;
+                    case 'resta':
+                        resultado = num1 - num2; // Realizamos la resta
+                        break;
+                    case 'multiplicacion':
+                        resultado = num1 * num2; // Realizamos la multiplicación
+                        break;
+                    case 'division':
+                        if (num2 === 0) {
+                            resultado = 'Error: División por cero no permitida.'; // Manejo de división por cero
+                        } else {
+                            resultado = num1 / num2; // Realizamos la división
+                        }
+                        break;
+                    default:
+                        resultado = 'Operación no válida.'; // Manejo de operaciones no válidas
+                }
+
+                // Enviamos el resultado de vuelta al cliente
+                socket.emit('resultado', resultado);
+            });
+
+            // Manejamos el evento de cálculo para el factorial
+            socket.on('calcularFactorial', (num) => {
+                const resultado = factorial(num); // Calculamos el factorial
+                socket.emit('resultado', resultado); // Enviamos el resultado
+            });
+
+            // Manejamos el evento de cálculo para la raíz cuadrada
+            socket.on('calcularRaizCuadrada', (num) => {
+                if (num < 0) {
+                    socket.emit('resultado', 'Error: No se puede calcular la raíz cuadrada de un número negativo.'); // Manejo de raíz cuadrada de negativo
+                } else {
+                    const resultado = Math.sqrt(num); // Calculamos la raíz cuadrada
+                    socket.emit('resultado', resultado); // Enviamos el resultado
+                }
+            });
+        });
+
+        // Función para calcular el factorial
+        function factorial(n) {
+            if (n < 0) return 'Error: No se puede calcular el factorial de un número negativo.'; // Manejo de negativo
+            if (n === 0 || n === 1) return 1; // Caso base
+            let result = 1; // Inicializamos el resultado
+            for (let i = 2; i <= n; i++) { // Iteramos desde 2 hasta n
+                result *= i; // Multiplicamos cada número por el resultado acumulado
+            }
+            return result; // Retornamos el resultado final
+        }
+    //-----------------------------------------------------------------------------------------------------------------------------------------
+    //-----------------------------------------------------------------------------------------------------------------------------------------
 })
 
 // Usamos 'morgan' para registrar todas las solicitudes HTTP realizadas al servidor
