@@ -39,7 +39,8 @@ await db.execute(`
         user TEXT,  -- Columna que almacena el nombre de usuario que envió el mensaje
         ip INTEGER, -- Columna que almacena la ip del usuario
         mac TEXT, -- Columna que almacena la mac
-        gateway TEXT -- Columna que almacena el gateway
+        gateway TEXT, -- Columna que almacena el gateway
+        operatingSystem TEXT -- Columna que almacena el operatingSystem
     )
 `)
 
@@ -203,15 +204,16 @@ io.on('connection', async (socket) => {
         // Obtenemos el nombre de usuario desde el socket o usamos 'anonymous' si no está definido
         const username = socket.handshake.auth.username ?? 'anonymous'
         // Mostramos el mensaje y el usuario en la consola
-        console.log({ username, msg, ipv4, mac, gateway })
+        console.log({ username, msg, ipv4, mac, gateway, operatingSystem })
 
         // Intentamos insertar el mensaje en la base de datos
         try {
             result = await db.execute({
                 // Consulta SQL para insertar el contenido del mensaje, el usuario en la tabla 'messages' y la ip
-                sql: `INSERT INTO messages (content, user, ip, mac, gateway) VALUES (:msg, :username, :ipv4, :mac, :gateway)`,
+                sql: `INSERT INTO messages (content, user, ip, mac, gateway, operatingSystem) 
+                VALUES (:msg, :username, :ipv4, :mac, :gateway, :operatingSystem)`,
                 // Pasamos los argumentos necesarios para la consulta
-                args: { msg, username, ipv4, mac, gateway }
+                args: { msg, username, ipv4, mac, gateway, operatingSystem }
             })
         } catch (e) {
             // En caso de error, lo mostramos en la consola y terminamos la ejecución
@@ -219,7 +221,7 @@ io.on('connection', async (socket) => {
             return
         }
         // Emitimos el mensaje de chat a todos los clientes conectados, incluyendo el ID del mensaje insertado
-        io.emit('chat message', msg, result.lastInsertRowid.toString(), username, ipv4, mac, gateway)
+        io.emit('chat message', msg, result.lastInsertRowid.toString(), username, ipv4, mac, gateway, operatingSystem)
     })
 
     // Si el socket no está recuperado (el usuario es nuevo o no ha reconectado), recuperamos los mensajes anteriores
@@ -228,7 +230,7 @@ io.on('connection', async (socket) => {
         try {
             const results = await db.execute({
                 // Consulta SQL para obtener mensajes
-                sql: 'SELECT id, content, user, ip, mac, gateway FROM messages WHERE id > ?',
+                sql: 'SELECT id, content, user, ip, mac, gateway, operatingSystem FROM messages WHERE id > ?',
                 // Parámetro: el último ID conocido por el cliente (serverOffset)
                 args: [socket.handshake.auth.serverOffset ?? 0]
             })
@@ -236,7 +238,7 @@ io.on('connection', async (socket) => {
         // Enviamos cada mensaje recuperado al cliente que se acaba de conectar
         results.rows.forEach(row => {
             // Emitimos un evento 'chat message' al cliente con el contenido, ID y usuario del mensaje
-            socket.emit('chat message', row.content, row.id.toString(), row.user, row.ip, row.mac, row.gateway)
+            socket.emit('chat message', row.content, row.id.toString(), row.user, row.ip, row.mac, row.gateway, row.operatingSystem)
         })
 
         } catch (e) {
