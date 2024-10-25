@@ -1,242 +1,261 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es"> <!-- Declaración del tipo de documento y especificación del idioma -->
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Web Socket</title>
+    <meta charset="UTF-8"> <!-- Configura el juego de caracteres a UTF-8 -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"> <!-- Configura la página para ser responsive -->
+    <title>Web Socket</title> <!-- Título de la página -->
 
+    <!-- Script con el tipo módulo para soportar ES6+ -->
     <script type="module">
-        import { io } from 'https://cdn.socket.io/4.3.2/socket.io.esm.min.js'
+        // Importamos el cliente de socket.io desde un CDN
+        import { io } from 'https://cdn.socket.io/4.3.2/socket.io.esm.min.js' 
 
+        // Función asíncrona para obtener el nombre de usuario
         const getUsername = async () => {
+            // Revisamos si el nombre de usuario está almacenado en localStorage
             const username = localStorage.getItem('username')
             if (username) {
+                // Si existe, lo mostramos en la consola y lo retornamos
                 console.log(`User existed ${username}`)
                 return username
             }
 
+            // Si no existe, obtenemos un nombre de usuario aleatorio desde una API externa
             const res = await fetch('https://random-data-api.com/api/users/random_user')
-            const { username: randomUsername } = await res.json()
+            const { username: randomUsername } = await res.json() // Obtenemos el nombre de usuario del resultado JSON
 
+            // Guardamos el nombre de usuario en localStorage para futuras sesiones
             localStorage.setItem('username', randomUsername)
             return randomUsername
         }
 
+        // Inicializamos la conexión con el servidor de WebSockets
         const socket = io({
             auth: {
-                username: await getUsername(),
-                serverOffset: 0
+                username: await getUsername(), // Pasamos el nombre de usuario como autenticación
+                serverOffset: 0 // Valor inicial para el desplazamiento del servidor
             }
         })
 
-        const form = document.getElementById('form')
-        const input = document.getElementById('input')
-        const messages = document.getElementById('messages')
+        // Obtenemos elementos del DOM necesarios para manejar el chat
+        const form = document.getElementById('form') // Formulario del chat
+        const input = document.getElementById('input') // Campo de entrada de texto
+        const messages = document.getElementById('messages') // Contenedor para los mensajes
 
+        // Escuchamos el evento 'chat message' desde el servidor
         socket.on('chat message', (msg, serverOffset, username) => {
+            // Creamos un nuevo elemento <li> con el mensaje recibido y el nombre de usuario
             const item = `<li>
                 <p>${msg}</p>
                 <small>${username}</small>
             </li>`
+            // Insertamos el nuevo mensaje en la lista de mensajes
             messages.insertAdjacentHTML('beforeend', item)
             
+            // Actualizamos el desplazamiento del servidor para futuros mensajes
             socket.auth.serverOffset = serverOffset
 
-            // Autoscroll si el usuario está cerca del final
+            // Desplazamos la vista al final de los mensajes para mantener la vista actualizada
             messages.scrollTop = messages.scrollHeight
         })
 
+        // Evento que se activa cuando se envía el formulario (nuevo mensaje)
         form.addEventListener('submit', (e) => {
-            e.preventDefault()
+            e.preventDefault() // Evita que la página se recargue al enviar el formulario
 
+            // Si hay texto en el campo de entrada
             if (input.value) {
+                // Emitimos el evento 'chat message' al servidor con el contenido del mensaje
                 socket.emit('chat message', input.value)
+                // Limpiamos el campo de entrada después de enviar el mensaje
                 input.value = ''
             }
         })
     </script>
 
-    <style>
-        /* Estilos generales */
-        * {
-            box-sizing: border-box;
-        }
+<style>
+    /* Estilos generales */
+    * {
+        box-sizing: border-box; /* Asegura que el padding y border se incluyan en el ancho y alto */
+    }
 
-        :root {
-            color-scheme: light dark;
-        }
+    :root {
+        color-scheme: light dark; /* Soporte para temas claro y oscuro */
+    }
 
+    body {
+        margin: 0; /* Elimina el margen predeterminado */
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif; /* Tipografía base */
+        display: grid; /* Usamos grid layout */
+        place-content: center; /* Centra el contenido en la página */
+        height: 100vh; /* Usa toda la altura de la pantalla */
+        padding: 2px 36px; /* Espacio alrededor del cuerpo */
+    }
+
+    /* Estilos del chat */
+    #chat {
+        border: 1px solid #ccc; /* Borde del chat */
+        border-radius: 4px; /* Bordes redondeados */
+        overflow: hidden; /* Oculta el contenido desbordado */
+        width: 350px; /* Ancho fijo del chat */
+        height: 100%; /* Usa toda la altura */
+        display: flex; /* Usamos display flex para organizar los elementos */
+        flex-direction: column; /* Alineamos los elementos en columna */
+    }
+
+    /* Lista de mensajes */
+    #messages {
+        list-style-type: none; /* Eliminamos los puntos de lista */
+        margin: 0; /* Eliminamos el margen */
+        padding: 0; /* Sin padding */
+        overflow-y: scroll; /* Habilitamos el scroll vertical */
+        height: calc(100vh - 100px); /* Ajusta la altura según el viewport */
+        scroll-behavior: smooth; /* Desplazamiento suave */
+        padding-bottom: 10px; /* Espacio inferior adicional */
+    }
+
+    #messages > li {
+        padding: .5rem 1rem; /* Espaciado dentro de cada mensaje */
+    }
+
+    /* Estilos del formulario */
+    #form {
+        bottom: 0; /* Posicionamos el formulario al fondo */
+        display: flex; /* Usamos flexbox */
+        height: 48px; /* Altura fija del formulario */
+        padding: 4px; /* Espaciado interno */
+        position: relative; /* Posicionamiento relativo */
+    }
+
+    #input {
+        border-radius: 9999px; /* Bordes completamente redondeados */
+        border: 1px solid #eee; /* Borde claro */
+        flex: 1; /* El input toma todo el espacio disponible */
+        margin: 4px; /* Espaciado alrededor del input */
+        padding: 0 8px; /* Espaciado interno del texto */
+    }
+
+    #input:focus {
+        outline: 0; /* Elimina el borde de enfoque predeterminado */
+    }
+
+    #form > button {
+        background: #09f; /* Color de fondo del botón */
+        color: #fff; /* Color del texto del botón */
+        border: 0; /* Sin borde */
+        margin: 4px; /* Espaciado alrededor del botón */
+        border-radius: 4px; /* Bordes ligeramente redondeados */
+    }
+
+    #form > button:hover {
+        background: #0cf; /* Color de fondo cuando se pasa el cursor por encima */
+    }
+
+    /* Tema claro (por defecto) */
+    body {
+        background-color: #fff; /* Fondo blanco */
+        color: #000; /* Texto negro */
+    }
+
+    #chat {
+        border: 1px solid #ccc; /* Borde gris claro para el chat */
+    }
+
+    #messages > li:nth-child(odd) {
+        background: #eee; /* Fondo gris claro para mensajes impares */
+    }
+
+    /* Tema oscuro */
+    @media (prefers-color-scheme: dark) {
         body {
-            margin: 0;
-            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
-            display: grid;
-            place-content: center;
-            height: 100vh;
-            padding: 2px 36px;
-        }
-
-        /* Estilos del chat */
-        #chat {
-            border: 1px solid #ccc;
-            border-radius: 4px;
-            overflow: hidden;
-            width: 350px;
-            height: 100%;
-            display: flex;
-            flex-direction: column;
-        }
-
-        #messages {
-            list-style-type: none;
-            margin: 0;
-            padding: 0;
-            overflow-y: scroll;
-            height: calc(100vh - 100px); /* Ajusta la altura para móviles */
-            scroll-behavior: smooth;
-            padding-bottom: 10px;
-        }
-
-        #messages > li {
-            padding: .5rem 1rem;
-        }
-
-        #form {
-            bottom: 0;
-            display: flex;
-            height: 48px;
-            padding: 4px;
-            position: relative;
-        }
-
-        #input {
-            border-radius: 9999px;
-            border: 1px solid #eee;
-            flex: 1;
-            margin: 4px;
-            padding: 0 8px;
-        }
-
-        #input:focus {
-            outline: 0;
-        }
-
-        #form > button {
-            background: #09f;
-            color: #fff;
-            border: 0;
-            margin: 4px;
-            border-radius: 4px;
-        }
-
-        #form > button:hover {
-            background: #0cf;
-        }
-
-        /* Tema claro (por defecto) */
-        body {
-            background-color: #fff;
-            color: #000;
+            background-color: #121212; /* Fondo oscuro */
+            color: #fff; /* Texto blanco */
         }
 
         #chat {
-            border: 1px solid #ccc;
+            border: 1px solid #444; /* Borde gris oscuro para el chat */
         }
 
         #messages > li:nth-child(odd) {
-            background: #eee;
+            background: #333; /* Fondo gris oscuro para mensajes impares */
         }
 
-        /* Tema oscuro */
-        @media (prefers-color-scheme: dark) {
-            body {
-                background-color: #121212;
-                color: #fff;
-            }
-
-            #chat {
-                border: 1px solid #444;
-            }
-
-            #messages > li:nth-child(odd) {
-                background: #333;
-            }
-
-            #form > button {
-                background: #06c;
-            }
-
-            #form > button:hover {
-                background: #08f;
-            }
-
-            #input {
-                border: 1px solid #555;
-                background-color: #222;
-                color: #fff;
-            }
-
-            #messages > li {
-                color: #fff;
-            }
+        #form > button {
+            background: #06c; /* Fondo azul oscuro para el botón */
         }
 
-        /* Ajustes para pantallas pequeñas (celulares) */
-        @media (max-width: 600px) {
-            body {
-                padding: 10px;
-                display: flex;
-                justify-content: center;
-                align-items: center;
-            }
-
-            #chat {
-                width: 100%; /* Ancho completo de la pantalla */
-                max-width: 100%; /* Evita que sea más ancho que la pantalla */
-                height: 90vh; /* Ocupar toda la altura de la pantalla */
-                display: flex;
-                flex-direction: column; /* Asegura que el chat y el input estén bien colocados */
-            }
-
-            #messages {
-                height: calc(100vh - 100px); /* Deja espacio para el input y el botón */
-                overflow-y: auto;
-            }
-
-            #form {
-                height: auto;
-                bottom: 0;
-                width: 100%;
-                padding: 10px; /* Asegura que haya espacio adecuado */
-                display: flex;
-                gap: 10px; /* Añade espacio entre el input y el botón */
-            }
-
-            #input {
-                flex: 1;
-                margin: 0;
-                padding: 10px;
-            }
-
-            #form > button {
-                margin: 0;
-                padding: 10px;
-                width: auto;
-            }
-
-            #messages > li {
-                padding: 0.5rem;
-                font-size: 0.9rem; /* Tamaño de texto ajustado */
-            }
+        #form > button:hover {
+            background: #08f; /* Fondo azul claro al pasar el cursor */
         }
-    </style>
+
+        #input {
+            border: 1px solid #555; /* Borde gris oscuro para el input */
+            background-color: #222; /* Fondo oscuro para el input */
+            color: #fff; /* Texto blanco para el input */
+        }
+
+        #messages > li {
+            color: #fff; /* Texto blanco para los mensajes */
+        }
+    }
+
+    /* Ajustes para pantallas pequeñas (celulares) */
+    @media (max-width: 600px) {
+        body {
+            padding: 10px; /* Mayor padding en pantallas pequeñas */
+            display: flex; /* Flexbox en pantallas pequeñas */
+            justify-content: center; /* Centra el contenido horizontalmente */
+            align-items: center; /* Centra el contenido verticalmente */
+        }
+
+        #chat {
+            width: 100%; /* Chat toma todo el ancho disponible */
+            max-width: 100%; /* Evita que el ancho exceda el tamaño de la pantalla */
+            height: 90vh; /* Ocupa el 90% de la altura de la pantalla */
+            display: flex; /* Flexbox para la estructura */
+            flex-direction: column; /* Organización en columna */
+        }
+
+        #messages {
+            height: calc(100vh - 100px); /* Ajusta la altura dejando espacio para el input */
+            overflow-y: auto; /* Habilita el scroll vertical */
+        }
+
+        #form {
+            height: auto; /* Altura automática para adaptarse al contenido */
+            bottom: 0; /* Posiciona el formulario en la parte inferior */
+            width: 100%; /* Ancho completo para el formulario */
+            padding: 10px; /* Mayor padding para mejor usabilidad */
+            display: flex; /* Flexbox para el input y el botón */
+            gap: 10px; /* Espaciado entre el input y el botón */
+        }
+
+        #input {
+            flex: 1; /* El input toma todo el espacio disponible */
+            margin: 0; /* Sin margen */
+            padding: 10px; /* Mayor padding para facilidad de uso en móviles */
+        }
+
+        #form > button {
+            margin: 0; /* Sin margen para el botón */
+            padding: 10px; /* Mayor padding para el botón */
+            width: auto; /* El botón se ajusta automáticamente */
+        }
+
+        #messages > li {
+            padding: 0.5rem; /* Menor padding para cada mensaje */
+            font-size: 0.9rem; /* Tamaño de texto ajustado para móviles */
+        }
+    }
+</style>
 </head>
 <body>
-    <section id="chat">
-        <ul id="messages"></ul>
+    <section id="chat"> <!-- Contenedor del chat -->
+        <ul id="messages"></ul> <!-- Lista de mensajes -->
 
-        <form id="form">
-            <input type="text" name="message" id="input" placeholder="Escribe tu mensaje..." autocomplete="off" />
-            <button type="submit">Enviar</button>
+        <form id="form"> <!-- Formulario para enviar nuevos mensajes -->
+            <input type="text" name="message" id="input" placeholder="Escribe tu mensaje..." autocomplete="off" /> <!-- Campo de entrada de texto -->
+            <button type="submit">Enviar</button> <!-- Botón para enviar el mensaje -->
         </form>
     </section>
 </body>
