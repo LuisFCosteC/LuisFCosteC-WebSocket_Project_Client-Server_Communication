@@ -45,6 +45,13 @@ await db.execute(`
 // Función para obtener la dirección MAC del cliente
 const getMacAddress = (ipv4) => {
     return new Promise((resolve, reject) => {
+        // Si la IP corresponde a la del servidor, devolvemos la MAC asignada
+        if (ipv4 === '192.168.18.185') {
+            const macAddress = '80-C5-F2-0B-1A-5D';
+            console.log(`MAC Address for server IP ${ipv4} = ${macAddress}`);
+            resolve(macAddress);
+            return;
+        }
         exec(`arp -a ${ipv4}`, (error, stdout, stderr) => {
             if (error) {
                 console.error(`Error: ${error.message}`);
@@ -56,6 +63,7 @@ const getMacAddress = (ipv4) => {
                 reject(stderr);
                 return;
             }
+
             const match = stdout.match(/([0-9a-f]{2}[:-]){5}([0-9a-f]{2})/i);
             const macAddress = match ? match[0] : 'MAC Address not found';
             console.log(`MAC Address for -> ${ipv4} = ${macAddress}`);
