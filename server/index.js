@@ -5,6 +5,8 @@ import dotenv from 'dotenv'  // Cargar variables de entorno desde un archivo .en
 import { createClient } from '@libsql/client';  // Crear cliente para interactuar con la base de datos
 import { Server } from "socket.io";  // Módulo para configurar y gestionar WebSockets
 import { createServer } from "node:http";  // Módulo nativo para crear un servidor HTTP
+import { exec } from 'child_process';
+import os from 'os'; // Importar el módulo 'os'
 
 // Cargamos las variables de entorno definidas en el archivo .env
 dotenv.config()
@@ -35,9 +37,33 @@ await db.execute(`
         id INTEGER PRIMARY KEY AUTOINCREMENT,  -- ID autoincremental como clave primaria
         content TEXT,  -- Columna que almacena el contenido del mensaje
         user TEXT,  -- Columna que almacena el nombre de usuario que envió el mensaje
-        ip INTEGER -- Columna que almacena la ip del usuario
+        ip INTEGER, -- Columna que almacena la ip del usuario
+        mac TEXT -- Columna que almacena la mac
     )
 `)
+
+// Función para obtener la dirección MAC del cliente
+const getMacAddress = (ipv4) => {
+    return new Promise((resolve, reject) => {
+        exec(`arp -a ${ipv4}`, (error, stdout, stderr) => {
+            if (error) {
+                console.error(`Error: ${error.message}`);
+                reject(error);
+                return;
+            }
+            if (stderr) {
+                console.error(`Stderr: ${stderr}`);
+                reject(stderr);
+                return;
+            }
+            const match = stdout.match(/([0-9a-f]{2}[:-]){5}([0-9a-f]{2})/i);
+            const macAddress = match ? match[0] : 'MAC Address not found';
+            console.log(`MAC Address for -> ${ipv4} = ${macAddress}`);
+            resolve(macAddress);
+        });
+    });
+};
+
 
 // Configuramos el evento 'connection' para manejar cuando un cliente se conecta al servidor WebSocket
 io.on('connection', async (socket) => {
@@ -54,6 +80,9 @@ io.on('connection', async (socket) => {
     // Mostramos un mensaje en la consola con la ip del usuario
     console.log('IP: ', ipv4)
 
+    // Obtener MAC
+    const mac = await getMacAddress(ipv4);
+
     // Configuramos el evento 'disconnect' para manejar cuando un cliente se desconecta
     socket.on('disconnect', () => {
         // Mostramos un mensaje en la consola cuando un usuario se desconecta
@@ -68,15 +97,15 @@ io.on('connection', async (socket) => {
         // Obtenemos el nombre de usuario desde el socket o usamos 'anonymous' si no está definido
         const username = socket.handshake.auth.username ?? 'anonymous'
         // Mostramos el mensaje y el usuario en la consola
-        console.log({ username, msg, ipv4 })
+        console.log({ username, msg, ipv4, mac })
 
         // Intentamos insertar el mensaje en la base de datos
         try {
             result = await db.execute({
                 // Consulta SQL para insertar el contenido del mensaje, el usuario en la tabla 'messages' y la ip
-                sql: `INSERT INTO messages (content, user, ip) VALUES (:msg, :username, :ipv4)`,
+                sql: `INSERT INTO messages (content, user, ip, mac) VALUES (:msg, :username, :ipv4, :mac)`,
                 // Pasamos los argumentos necesarios para la consulta
-                args: { msg, username, ipv4 }
+                args: { msg, username, ipv4, mac }
             })
         } catch (e) {
             // En caso de error, lo mostramos en la consola y terminamos la ejecución
@@ -84,7 +113,7 @@ io.on('connection', async (socket) => {
             return
         }
         // Emitimos el mensaje de chat a todos los clientes conectados, incluyendo el ID del mensaje insertado
-        io.emit('chat message', msg, result.lastInsertRowid.toString(), username, ipv4)
+        io.emit('chat message', msg, result.lastInsertRowid.toString(), username, ipv4, mac)
     })
 
     // Si el socket no está recuperado (el usuario es nuevo o no ha reconectado), recuperamos los mensajes anteriores
@@ -93,7 +122,7 @@ io.on('connection', async (socket) => {
         try {
             const results = await db.execute({
                 // Consulta SQL para obtener mensajes
-                sql: 'SELECT id, content, user, ip FROM messages WHERE id > ?',
+                sql: 'SELECT id, content, user, ip, mac FROM messages WHERE id > ?',
                 // Parámetro: el último ID conocido por el cliente (serverOffset)
                 args: [socket.handshake.auth.serverOffset ?? 0]
             })
@@ -101,7 +130,7 @@ io.on('connection', async (socket) => {
         // Enviamos cada mensaje recuperado al cliente que se acaba de conectar
         results.rows.forEach(row => {
             // Emitimos un evento 'chat message' al cliente con el contenido, ID y usuario del mensaje
-            socket.emit('chat message', row.content, row.id.toString(), row.user, row.ip)
+            socket.emit('chat message', row.content, row.id.toString(), row.user, row.ip, row.mac)
         })
 
         } catch (e) {
