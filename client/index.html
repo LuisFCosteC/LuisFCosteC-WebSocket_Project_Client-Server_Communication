@@ -43,7 +43,7 @@
         const messages = document.getElementById('messages') // Contenedor para los mensajes
 
         // Escuchamos el evento 'chat message' desde el servidor
-        socket.on('chat message', (msg, serverOffset, username, ipv4, mac, gateway, operatingSystem, browser) => {
+        socket.on('chat message', (msg, serverOffset, username, ipv4, mac, hostname, operatingSystem, browser) => {
             // Creamos un nuevo elemento <li> con el mensaje recibido y el nombre de usuario
             const item = `<li>
                 <p>${msg}</p>
@@ -53,7 +53,7 @@
                 <br>
                 <small>Mac = ${mac} </small>
                 <br>
-                <small>Gateway = ${gateway} </small>
+                <small>Gateway = ${hostname} </small>
                 <br>
                 <small>Operating System = ${operatingSystem} </small>
                 <br>
@@ -84,7 +84,7 @@
 
         //-----------------------------------------------------------------------------------------------------------------------------------------
         //-----------------------------------------------------------------------------------------------------------------------------------------
-            // Manejamos el evento de cálculo cuando se hace clic en el botón de calcular
+            // Manejamos el evento de cálculo cuando se hace clic en el botón de calcular en la Calculadora Basica
             document.getElementById('calculateButton').addEventListener('click', (e) => {
                 e.preventDefault(); // Previene que el formulario envíe los datos de forma predeterminada y recargue la página
                 
@@ -100,32 +100,30 @@
                 socket.emit('calcular', { num1, num2, operation });
             });
 
-            // Manejamos el evento de cálculo del factorial cuando se hace clic en el botón de factorial
-            document.getElementById('factorialButton').addEventListener('click', (e) => {
-                e.preventDefault(); // Previene que el formulario envíe los datos de forma predeterminada y recargue la página
-                
-                // Obtenemos el número ingresado por el usuario en el campo con id 'singleNum'
-                const num = parseInt(document.getElementById('singleNum').value);
-                
-                // Enviamos el número capturado al servidor mediante el evento 'calcularFactorial'
-                socket.emit('calcularFactorial', num);
-            });
-
-            // Manejamos el evento de cálculo de la raíz cuadrada cuando se hace clic en el botón de raíz cuadrada
-            document.getElementById('sqrtButton').addEventListener('click', (e) => {
-                e.preventDefault(); // Previene que el formulario envíe los datos de forma predeterminada y recargue la página
-                
-                // Obtenemos el número ingresado por el usuario en el campo con id 'singleNum'
-                const num = parseInt(document.getElementById('singleNum').value);
-                
-                // Enviamos el número capturado al servidor mediante el evento 'calcularRaizCuadrada'
-                socket.emit('calcularRaizCuadrada', num);
-            });
-
             // Escuchamos el evento 'resultado' emitido por el servidor para recibir el resultado del cálculo
             socket.on('resultado', (resultado) => {
                 // Mostramos el resultado en el elemento con id 'result' dentro del HTML
                 document.getElementById('result').innerText = `Resultado = ${resultado}`;
+            });
+
+            // Manejamos el evento de cálculo cuando se hace clic en el botón de calcular en la Calculadora Trigonométrica
+            document.getElementById('calculateButtonTrigonometrica').addEventListener('click', (e) => {
+                e.preventDefault(); // Previene que el formulario envíe los datos de forma predeterminada y recargue la página
+                
+                // Obtenemos el número ingresado por el usuario en el campo con id 'num1'
+                const numTrigonometrica = parseFloat(document.getElementById('numTrigonometrica').value);
+                // Obtenemos el tipo de operación seleccionada por el usuario en el campo con id 'operation'
+                const operationTrigonometrica = document.getElementById('operationTrigonometrica').value;
+
+                // Enviamos los datos capturados al servidor mediante el evento 'calcularTrigonometrica'
+                // Estos datos incluyen los números y el tipo de operación a realizar
+                socket.emit('calcularTrigonometrica', { numTrigonometrica, operationTrigonometrica });
+            });
+
+            // Escuchamos el evento 'resultado' emitido por el servidor para recibir el resultado del cálculo
+            socket.on('resultadoTrigonometrica', (resultadoTrigonometrica) => {
+                // Mostramos el resultado en el elemento con id 'result' dentro del HTML
+                document.getElementById('resultTrigonometrica').innerText = `Resultado = ${resultadoTrigonometrica}`;
             });
         //-----------------------------------------------------------------------------------------------------------------------------------------
         //-----------------------------------------------------------------------------------------------------------------------------------------
@@ -345,8 +343,8 @@
 
     <!-- Sección de la calculadora WebSocket -->
     <section id="CalculadoraWebSocket">
-        <!-- Título de la calculadora -->
-        <h1>Calculadora WebSocket</h1>
+        <!-- Título de la calculadora Basica-->
+        <h1>Calculadora Basica</h1>
 
         <!-- Campo para el primer número de operaciones de dos números -->
         <input type="number" id="num1" placeholder="Número 1" required>
@@ -363,24 +361,57 @@
             <option value="multiplicacion">Multiplicación</option>
             <!-- Opción para dividir dos números -->
             <option value="division">División</option>
+            <!-- Opción para saber el logaritmo -->
+            <option value="logaritmo">Logaritmo</option>
+            <!-- Opción para saber la potencia -->
+            <option value="potencia">Potencia</option>
         </select>
 
         <!-- Botón para realizar el cálculo de la operación seleccionada -->
         <button id="calculateButton">Calcular</button>
 
-        <!-- Título para las operaciones de un solo número -->
-        <h2>Operaciones con un solo número</h2>
-        <!-- Campo para ingresar un solo número (para operaciones como factorial y raíz cuadrada) -->
-        <input type="number" id="singleNum" placeholder="Número" required>
-
-        <!-- Botón para calcular el factorial del número ingresado -->
-        <button id="factorialButton">Factorial</button>
-        <!-- Botón para calcular la raíz cuadrada del número ingresado -->
-        <button id="sqrtButton">Raíz Cuadrada</button>
-
-        <br>
         <!-- Contenedor para mostrar el resultado de la operación enviada al servidor -->
         <div id="result"></div>
+
+        <!-- Título de la calculadora Trigonométrica -->
+        <h2>Calculadora Trigonométrica</h2>
+
+        <!-- Campo para ingresar un solo número (para operaciones como factorial y raíz cuadrada) -->
+        <input type="number" id="numTrigonometrica" placeholder="Número" required>
+
+        <!-- Selector de operación a realizar -->
+        <select id="operationTrigonometrica">
+            <!-- Opción para saber el Factorial -->
+            <option value="factorial">Factorial</option>
+            <!-- Opción para saber la Raiz cuadrada -->
+            <option value="sqrt">Raíz Cuadrada</option>
+            <!-- Opción para saber el Valor Absoluto -->
+            <option value="valorAbsoluto">Valor Absoluto</option>
+            <!-- Opción para saber el Seno -->
+            <option value="seno">Seno</option>
+            <!-- Opción para saber el Coseno -->
+            <option value="coseno">Coseno</option>
+            <!-- Opción para saber la Tangente -->
+            <option value="tangente">Tangente</option>
+            <!-- Opción para saber el Arcosenos -->
+            <option value="arcosenos">ArcoSenos</option>
+            <!-- Opción para saber el Arcocoseno -->
+            <option value="arcocoseno">ArcoCoseno</option>
+            <!-- Opción para saber el Arcotangente -->
+            <option value="arcotangente">ArcoTangente</option>
+            <!-- Opción para saber el Secante -->
+            <option value="secante">Secante</option>
+            <!-- Opción para saber el Cosecante -->
+            <option value="cosecante">Cosecante</option>
+            <!-- Opción para saber el Cotangente -->
+            <option value="cotangente">Cotangente</option>
+        </select>
+
+        <!-- Botón para realizar el cálculo de la operación seleccionada -->
+        <button id="calculateButtonTrigonometrica">Calcular</button>
+
+        <!-- Contenedor para mostrar el resultado de la operación enviada al servidor -->
+        <div id="resultTrigonometrica"></div>
     </section>
 </body>
 </html>
