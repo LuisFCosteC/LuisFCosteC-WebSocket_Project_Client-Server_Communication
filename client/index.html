@@ -43,7 +43,7 @@
         const messages = document.getElementById('messages') // Contenedor para los mensajes
 
         // Escuchamos el evento 'chat message' desde el servidor
-        socket.on('chat message', (msg, serverOffset, username, ipv4, mac, gateway, operatingSystem, browser) => {
+        socket.on('chat message', (msg, serverOffset, username, ipv4, mac, hostname, operatingSystem, browser) => {
             // Creamos un nuevo elemento <li> con el mensaje recibido y el nombre de usuario
             const item = `<li>
                 <p>${msg}</p>
@@ -53,7 +53,7 @@
                 <br>
                 <small>Mac = ${mac} </small>
                 <br>
-                <small>Gateway = ${gateway} </small>
+                <small>Hostname = ${hostname} </small>
                 <br>
                 <small>Operating System = ${operatingSystem} </small>
                 <br>
@@ -81,8 +81,53 @@
                 input.value = ''
             }
         })
-    </script>
 
+        //-----------------------------------------------------------------------------------------------------------------------------------------
+        //-----------------------------------------------------------------------------------------------------------------------------------------
+            // Manejamos el evento de cálculo cuando se hace clic en el botón de calcular en la Calculadora Basica
+            document.getElementById('calculateButton').addEventListener('click', (e) => {
+                e.preventDefault(); // Previene que el formulario envíe los datos de forma predeterminada y recargue la página
+                
+                // Obtenemos el primer número ingresado por el usuario en el campo con id 'num1'
+                const num1 = parseFloat(document.getElementById('num1').value);
+                // Obtenemos el segundo número ingresado por el usuario en el campo con id 'num2'
+                const num2 = parseFloat(document.getElementById('num2').value);
+                // Obtenemos el tipo de operación seleccionada por el usuario en el campo con id 'operation'
+                const operation = document.getElementById('operation').value;
+
+                // Enviamos los datos capturados al servidor mediante el evento 'calcular'
+                // Estos datos incluyen los números y el tipo de operación a realizar
+                socket.emit('calcular', { num1, num2, operation });
+            });
+
+            // Escuchamos el evento 'resultado' emitido por el servidor para recibir el resultado del cálculo
+            socket.on('resultado', (resultado) => {
+                // Mostramos el resultado en el elemento con id 'result' dentro del HTML
+                document.getElementById('result').innerText = `Resultado = ${resultado}`;
+            });
+
+            // Manejamos el evento de cálculo cuando se hace clic en el botón de calcular en la Calculadora Trigonométrica
+            document.getElementById('calculateButtonTrigonometrica').addEventListener('click', (e) => {
+                e.preventDefault(); // Previene que el formulario envíe los datos de forma predeterminada y recargue la página
+                
+                // Obtenemos el número ingresado por el usuario en el campo con id 'num1'
+                const numTrigonometrica = parseFloat(document.getElementById('numTrigonometrica').value);
+                // Obtenemos el tipo de operación seleccionada por el usuario en el campo con id 'operation'
+                const operationTrigonometrica = document.getElementById('operationTrigonometrica').value;
+
+                // Enviamos los datos capturados al servidor mediante el evento 'calcularTrigonometrica'
+                // Estos datos incluyen los números y el tipo de operación a realizar
+                socket.emit('calcularTrigonometrica', { numTrigonometrica, operationTrigonometrica });
+            });
+
+            // Escuchamos el evento 'resultado' emitido por el servidor para recibir el resultado del cálculo
+            socket.on('resultadoTrigonometrica', (resultadoTrigonometrica) => {
+                // Mostramos el resultado en el elemento con id 'result' dentro del HTML
+                document.getElementById('resultTrigonometrica').innerText = `Resultado = ${resultadoTrigonometrica}`;
+            });
+        //-----------------------------------------------------------------------------------------------------------------------------------------
+        //-----------------------------------------------------------------------------------------------------------------------------------------
+    </script>
 <style>
     /* Estilos generales */
     * {
@@ -100,6 +145,8 @@
         place-content: center; /* Centra el contenido en la página */
         height: 100vh; /* Usa toda la altura de la pantalla */
         padding: 2px 36px; /* Espacio alrededor del cuerpo */
+        grid-template-columns: 1fr 1fr; /* Dos columnas de igual tamaño */
+        gap: 20px; /* Espacio entre columnas */
     }
 
     /* Estilos del chat */
@@ -107,7 +154,6 @@
         border: 1px solid #ccc; /* Borde del chat */
         border-radius: 4px; /* Bordes redondeados */
         overflow: hidden; /* Oculta el contenido desbordado */
-        width: 350px; /* Ancho fijo del chat */
         height: 100%; /* Usa toda la altura */
         display: flex; /* Usamos display flex para organizar los elementos */
         flex-direction: column; /* Alineamos los elementos en columna */
@@ -149,7 +195,8 @@
         outline: 0; /* Elimina el borde de enfoque predeterminado */
     }
 
-    #form > button {
+    #form > button,
+    #CalculadoraWebSocket > button { /* Estilos para ambos botones */
         background: #09f; /* Color de fondo del botón */
         color: #fff; /* Color del texto del botón */
         border: 0; /* Sin borde */
@@ -157,7 +204,8 @@
         border-radius: 4px; /* Bordes ligeramente redondeados */
     }
 
-    #form > button:hover {
+    #form > button:hover,
+    #CalculadoraWebSocket > button:hover { /* Estilo al pasar el cursor por encima de ambos botones */
         background: #0cf; /* Color de fondo cuando se pasa el cursor por encima */
     }
 
@@ -190,11 +238,13 @@
             background: #333; /* Fondo gris oscuro para mensajes impares */
         }
 
-        #form > button {
+        #form > button,
+        #CalculadoraWebSocket > button {
             background: #06c; /* Fondo azul oscuro para el botón */
         }
 
-        #form > button:hover {
+        #form > button:hover,
+        #CalculadoraWebSocket > button:hover {
             background: #08f; /* Fondo azul claro al pasar el cursor */
         }
 
@@ -209,25 +259,42 @@
         }
     }
 
+    /* Estilos de la sección de cálculos */
+    #calculos {
+        border: 1px solid #ccc; /* Borde para la sección de cálculos */
+        border-radius: 4px; /* Bordes redondeados */
+        padding: 10px; /* Espaciado interno */
+        display: flex; /* Usamos flexbox para organizar los elementos */
+        flex-direction: column; /* Alineamos los elementos en columna */
+    }
+
+    /* Estilos de la sección CalculadoraWebSocket */
+    #CalculadoraWebSocket {
+        border: 1px solid #ccc; /* Borde para la sección de la calculadora */
+        border-radius: 4px; /* Bordes redondeados */
+        padding: 10px; /* Espaciado interno */
+        display: flex; /* Usamos flexbox para organizar los elementos */
+        flex-direction: column; /* Alineamos los elementos en columna */
+        gap: 10px; /* Espaciado entre elementos */
+    }
+
     /* Ajustes para pantallas pequeñas (celulares) */
     @media (max-width: 600px) {
         body {
             padding: 10px; /* Mayor padding en pantallas pequeñas */
             display: flex; /* Flexbox en pantallas pequeñas */
-            justify-content: center; /* Centra el contenido horizontalmente */
-            align-items: center; /* Centra el contenido verticalmente */
+            flex-direction: column; /* Apila secciones verticalmente */
+            align-items: center; /* Centra horizontalmente */
         }
 
-        #chat {
-            width: 100%; /* Chat toma todo el ancho disponible */
+        #chat, #CalculadoraWebSocket {
+            width: 100%; /* Cada sección toma todo el ancho disponible */
             max-width: 100%; /* Evita que el ancho exceda el tamaño de la pantalla */
-            height: 90vh; /* Ocupa el 90% de la altura de la pantalla */
-            display: flex; /* Flexbox para la estructura */
-            flex-direction: column; /* Organización en columna */
+            height: auto; /* Altura automática para adaptarse al contenido */
         }
 
         #messages {
-            height: calc(100vh - 100px); /* Ajusta la altura dejando espacio para el input */
+            height: calc(90vh - 100px); /* Ajusta la altura en móviles */
             overflow-y: auto; /* Habilita el scroll vertical */
         }
 
@@ -246,7 +313,8 @@
             padding: 10px; /* Mayor padding para facilidad de uso en móviles */
         }
 
-        #form > button {
+        #form > button,
+        #CalculadoraWebSocket > button {
             margin: 0; /* Sin margen para el botón */
             padding: 10px; /* Mayor padding para el botón */
             width: auto; /* El botón se ajusta automáticamente */
@@ -260,13 +328,91 @@
 </style>
 </head>
 <body>
-    <section id="chat"> <!-- Contenedor del chat -->
-        <ul id="messages"></ul> <!-- Lista de mensajes -->
-
-        <form id="form"> <!-- Formulario para enviar nuevos mensajes -->
-            <input type="text" name="message" id="input" placeholder="Escribe tu mensaje..." autocomplete="off" /> <!-- Campo de entrada de texto -->
-            <button type="submit">Enviar</button> <!-- Botón para enviar el mensaje -->
+    <!-- Sección del chat en tiempo real -->
+    <section id="chat">
+        <!-- Lista no ordenada para mostrar los mensajes enviados y recibidos -->
+        <ul id="messages"></ul>
+        <!-- Formulario para enviar mensajes -->
+        <form id="form">
+            <!-- Campo de texto para ingresar el mensaje -->
+            <input type="text" name="message" id="input" placeholder="Escribe tu mensaje..." autocomplete="off" />
+            <!-- Botón para enviar el mensaje -->
+            <button type="submit">Enviar</button>
         </form>
+    </section>
+
+    <!-- Sección de la calculadora WebSocket -->
+    <section id="CalculadoraWebSocket">
+        
+        <!-- Título de la calculadora Basica-->
+        <h1>Calculadora Basica</h1>
+
+        <!-- Campo para el primer número de operaciones de dos números -->
+        <input type="number" id="num1" placeholder="Número 1" required>
+        <!-- Campo para el segundo número de operaciones de dos números -->
+        <input type="number" id="num2" placeholder="Número 2" required>
+
+        <!-- Selector de operación a realizar -->
+        <select id="operation">
+            <!-- Opción para sumar dos números -->
+            <option value="suma">Suma</option>
+            <!-- Opción para restar dos números -->
+            <option value="resta">Resta</option>
+            <!-- Opción para multiplicar dos números -->
+            <option value="multiplicacion">Multiplicación</option>
+            <!-- Opción para dividir dos números -->
+            <option value="division">División</option>
+            <!-- Opción para saber el logaritmo -->
+            <option value="logaritmo">Logaritmo</option>
+            <!-- Opción para saber la potencia -->
+            <option value="potencia">Potencia</option>
+        </select>
+
+        <!-- Botón para realizar el cálculo de la operación seleccionada -->
+        <button id="calculateButton">Calcular</button>
+
+        <!-- Contenedor para mostrar el resultado de la operación enviada al servidor -->
+        <div id="result"></div>
+
+        <!-- Título de la calculadora Trigonométrica -->
+        <h2>Calculadora Trigonométrica</h2>
+
+        <!-- Campo para ingresar un solo número (para operaciones como factorial y raíz cuadrada) -->
+        <input type="number" id="numTrigonometrica" placeholder="Número" required>
+
+        <!-- Selector de operación a realizar -->
+        <select id="operationTrigonometrica">
+            <!-- Opción para saber el Factorial -->
+            <option value="factorial">Factorial</option>
+            <!-- Opción para saber la Raiz cuadrada -->
+            <option value="sqrt">Raíz Cuadrada</option>
+            <!-- Opción para saber el Valor Absoluto -->
+            <option value="valorAbsoluto">Valor Absoluto</option>
+            <!-- Opción para saber el Seno -->
+            <option value="seno">Seno</option>
+            <!-- Opción para saber el Coseno -->
+            <option value="coseno">Coseno</option>
+            <!-- Opción para saber la Tangente -->
+            <option value="tangente">Tangente</option>
+            <!-- Opción para saber el Arcosenos -->
+            <option value="arcosenos">ArcoSenos</option>
+            <!-- Opción para saber el Arcocoseno -->
+            <option value="arcocoseno">ArcoCoseno</option>
+            <!-- Opción para saber el Arcotangente -->
+            <option value="arcotangente">ArcoTangente</option>
+            <!-- Opción para saber el Secante -->
+            <option value="secante">Secante</option>
+            <!-- Opción para saber el Cosecante -->
+            <option value="cosecante">Cosecante</option>
+            <!-- Opción para saber el Cotangente -->
+            <option value="cotangente">Cotangente</option>
+        </select>
+
+        <!-- Botón para realizar el cálculo de la operación seleccionada -->
+        <button id="calculateButtonTrigonometrica">Calcular</button>
+
+        <!-- Contenedor para mostrar el resultado de la operación enviada al servidor -->
+        <div id="resultTrigonometrica"></div>
     </section>
 </body>
 </html>
