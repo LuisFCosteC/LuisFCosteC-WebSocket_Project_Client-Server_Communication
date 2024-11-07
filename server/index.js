@@ -104,9 +104,15 @@ const getHostnameByIP = (ipv4) => {
         // Usamos el método 'lookupService' del módulo 'dns' para resolver el nombre de host
         dns.lookupService(ipv4, 0, (error, hostname) => {
             if (error) {
-                // Si ocurre un error, lo imprimimos en consola y rechazamos la promesa
-                console.error(`Error al resolver el nombre de host: ${error.message}`);
-                reject(error);
+                // Si ocurre un error de tipo ENOTFOUND, lo manejamos con un mensaje personalizado
+                if (error.code === 'ENOTFOUND') {
+                    console.error(`Hostname no encontrado para la IP ${ipv4}`);
+                    resolve("Hostname no encontrado");
+                } else {
+                    // Para otros tipos de errores, imprimimos el mensaje de error y rechazamos la promesa
+                    console.error(`Error al resolver el nombre de host: ${error.message}`);
+                    reject(error);
+                }
                 return;
             }
             // Mostramos el nombre de host encontrado en la consola
@@ -119,28 +125,18 @@ const getHostnameByIP = (ipv4) => {
 
 // Función para obtener el sistema operativo a partir del User-Agent
 const getOperatingSystem = (userAgent) => {
-    // Comprueba si el User-Agent contiene la palabra 'windows' (sin importar mayúsculas o minúsculas)
     if (/windows/i.test(userAgent)) {
-        return "Windows"; // Devuelve "Windows" si se encuentra
-    } 
-    // Comprueba si el User-Agent contiene la palabra 'android'
-    else if (/android/i.test(userAgent)) {
-        return "Android"; // Devuelve "Android" si se encuentra
-    } 
-    // Comprueba si el User-Agent contiene 'iphone', 'ipad' o 'ipod'
-    else if (/iphone|ipad|ipod/i.test(userAgent)) {
-        return "iOS"; // Devuelve "iOS" si se encuentra
-    } 
-    // Comprueba si el User-Agent contiene 'mac os'
-    else if (/mac os/i.test(userAgent)) {
-        return "macOS"; // Devuelve "macOS" si se encuentra
-    } 
-    // Comprueba si el User-Agent contiene la palabra 'linux'
-    else if (/linux/i.test(userAgent)) {
-        return "Linux"; // Devuelve "Linux" si se encuentra
+        return "Windows";
+    } else if (/android/i.test(userAgent)) {
+        return "Android";
+    } else if (/iphone|ipad|ipod/i.test(userAgent)) {
+        return "iOS";
+    } else if (/mac os/i.test(userAgent)) {
+        return "macOS";
+    } else if (/linux/i.test(userAgent)) {
+        return "Linux";
     }
-    // Si no se encuentra ninguno de los sistemas operativos anteriores
-    return "Desconocido"; // Devuelve "Desconocido" como valor predeterminado
+    return "Desconocido";
 };
 
 // Función para detectar el navegador a partir del User-Agent
@@ -219,7 +215,6 @@ io.on('connection', async (socket) => {
 
     // Aquí llamamos a getHostnameByIP 
     const hostname = await getHostnameByIP(ipv4);
-    console.log("Nombre de host:", hostname);
 
     /// Obtener el User-Agent del cliente
     const userAgent = socket.handshake.headers['user-agent'] || '';
