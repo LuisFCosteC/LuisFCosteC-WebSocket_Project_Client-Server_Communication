@@ -117,3 +117,4 @@ The HTML file contains the Graphical Interface with which the interaction with t
    ````
 
 # Presentation of the site
+![image](https://github.com/user-attachments/assets/566caa7e-bbbb-4609-85ff-7737942a30f3)
